@@ -351,6 +351,25 @@ class AnalysisScreen:
         """
         return county_series.str.strip().str.lower().str.replace('&', 'and')
 
+    def get_figure_number(self, map_index):
+        """
+        Calculate figure number based on map index.
+        Maps 1-26: Figure 1A, 1B, 1C, ..., 1Z
+        Maps 27-52: Figure 2A, 2B, 2C, ..., 2Z
+        Maps 53-78: Figure 3A, 3B, 3C, ..., 3Z
+        And so on...
+        """
+        # Calculate which group of 26 this map belongs to (1-based)
+        group_number = (map_index // 26) + 1
+        
+        # Calculate position within the group (0-25)
+        position_in_group = map_index % 26
+        
+        # Convert position to letter (A-Z)
+        letter = string.ascii_uppercase[position_in_group]
+        
+        return f"Figure {group_number}{letter}."
+
     def load_excel(self):
         path = filedialog.askopenfilename(filetypes=[("Excel Files", "*.xlsx")])
         if not path:
@@ -624,7 +643,9 @@ class AnalysisScreen:
                 genus = str(rec.get('genus', '')).strip().title()
                 subgenus = str(rec.get('subgenus', '')).strip().title() if 'subgenus' in rec and pd.notna(rec['subgenus']) else ''
                 sp_epithet = str(rec.get('species', '')).strip().lower()
-                caption = f"Figure {i+1}. " + r"$\it{{{genus}}}$"
+                # Use the new figure numbering system
+                fig_number = self.get_figure_number(i)
+                caption = f"{fig_number} " + r"$\it{{{genus}}}$"
                 if subgenus:
                     caption += r" ($\it{{{subgenus[1:-1]}}}$)"
                 caption += r" $\it{{{sp_epithet}}}$"
@@ -734,9 +755,9 @@ class AnalysisScreen:
                     gdf_copy.plot(ax=ax, color=gdf_copy["Color"], alpha=0.6)
                     ax.axis("off")
                     # --- Caption formatting ---
-                    row_num = idx // cols + 1
-                    col_letter = string.ascii_uppercase[idx % cols]
-                    fig_number = f"Figure {row_num}{col_letter}. "
+                    # Calculate global index for this map
+                    global_index = self.current_page * self.maps_per_page + idx
+                    fig_number = self.get_figure_number(global_index)
                     # Get genus, subgenus, species from DataFrame (first record for this species)
                     rec = species_data.iloc[0]
                     genus = str(rec.get('genus', '')).strip().title()
@@ -822,9 +843,9 @@ class AnalysisScreen:
                         gdf_copy.boundary.plot(ax=ax, linewidth=0.7, edgecolor="black")
                         gdf_copy.plot(ax=ax, color=gdf_copy["Color"], alpha=0.6)
                         ax.axis("off")
-                        row_num = idx // cols + 1
-                        col_letter = string.ascii_uppercase[idx % cols]
-                        fig_number = f"Figure {row_num}{col_letter}. "
+                        # Calculate global index for this map
+                        global_index = page * self.maps_per_page + idx
+                        fig_number = self.get_figure_number(global_index)
                         rec = species_data.iloc[0]
                         genus = str(rec.get('genus', '')).strip().title()
                         subgenus = str(rec.get('subgenus', '')).strip().title() if 'subgenus' in rec and pd.notna(rec['subgenus']) else ''
