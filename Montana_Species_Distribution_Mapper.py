@@ -11,6 +11,7 @@ import zipfile
 import matplotlib as mpl
 import string
 import textwrap
+import matplotlib.text as mtext
 
 def get_screen_geometry():
     """Get the geometry of all available screens"""
@@ -705,7 +706,7 @@ class AnalysisScreen:
         import string
         # Get maps for current page
         start = self.current_page * self.maps_per_page
-        end = self.current_page + self.maps_per_page
+        end = self.current_page * self.maps_per_page + self.maps_per_page
         maps_to_save = self.generated_maps[start:end]
         if not maps_to_save:
             return
@@ -755,28 +756,38 @@ class AnalysisScreen:
                     gdf_copy.plot(ax=ax, color=gdf_copy["Color"], alpha=0.6)
                     ax.axis("off")
                     # --- Caption formatting ---
-                    # Calculate global index for this map
                     global_index = self.current_page * self.maps_per_page + idx
                     fig_number = self.get_figure_number(global_index)
-                    # Get genus, subgenus, species from DataFrame (first record for this species)
                     rec = species_data.iloc[0]
                     genus = str(rec.get('genus', '')).strip().title()
-                    subgenus = str(rec.get('subgenus', '')).strip().title() if 'subgenus' in rec and pd.notna(rec['subgenus']) else ''
                     sp_epithet = str(rec.get('species', '')).strip().lower()
-                    # First line: Figure label (normal) and scientific name (italic), both Times New Roman, visually centered
-                    fig_label = f"{fig_number} "
+                    # First line: Figure label (normal) and scientific name (italic), both Times New Roman, centered
+                    shift = 0.350  # Adjust this value as needed (try 0.02, 0.04, etc.)
+                    t1 = mtext.Text(x=0.5 - shift, y=-0.10, text=f"{fig_number}", ha='center', va='bottom', fontsize=11, fontname='Times New Roman', fontstyle='normal', transform=ax.transAxes)
+                    ax._add_text(t1)
+                    # Get the width of the first part
+                    renderer = fig.canvas.get_renderer()
+                    t1.draw(renderer)
+                    bbox1 = t1.get_window_extent(renderer=renderer)
+                    # Draw genus and species in italic, right after 'Figure X.'
                     sci_label = f"{genus} {sp_epithet}"
-                    ax.text(0.5, -0.10, fig_label, ha='right', va='bottom', fontsize=11, fontname='Times New Roman', fontstyle='normal', transform=ax.transAxes)
-                    ax.text(0.5, -0.10, sci_label, ha='left', va='bottom', fontsize=11, fontname='Times New Roman', fontstyle='italic', transform=ax.transAxes)
-                    # Second line: summary
+                    # Estimate offset in axes coordinates
+                    # Convert bbox1 width from pixels to axes fraction
+                    inv = ax.transAxes.inverted()
+                    offset_display = bbox1.width
+                    offset_axes = inv.transform([(offset_display, 0)])[0][0] - inv.transform([(0, 0)])[0][0]
+                    # Place the italic text right after the normal text
+                    t2 = mtext.Text(x=0.5 - (shift + 0.03) + offset_axes/2, y=-0.10, text=sci_label, ha='left', va='bottom', fontsize=11, fontname='Times New Roman', fontstyle='italic', transform=ax.transAxes)
+                    ax._add_text(t2)
+                    # Second line: summary, centered
                     num_specimens = len(species_data)
                     num_counties = species_data['county'].nunique()
-                    summary = f"in MT, {num_specimens} specimen{'s' if num_specimens != 1 else ''} in {num_counties} count{'ies' if num_counties != 1 else 'y'}."
-                    ax.text(0.5, -0.16, summary, ha='center', va='bottom', fontsize=11, fontname='Times New Roman', transform=ax.transAxes)
+                    summary = f"{num_specimens} specimen{'s' if num_specimens != 1 else ''} in {num_counties} count{'ies' if num_counties != 1 else 'y'}."
+                    ax.text(0.29, -0.16, summary, ha='center', va='bottom', fontsize=11, fontname='Times New Roman', transform=ax.transAxes)
                 else:
                     ax.axis("off")
             fig.tight_layout(pad=0.01)
-            fig.subplots_adjust(hspace=0.0, wspace=0.0, bottom=0.04, top=0.98)
+            fig.subplots_adjust(hspace=-0.4, wspace=0.0, bottom=0.04, top=0.98)
             fig.savefig(file_path, format="tiff", dpi=300, bbox_inches='tight')
             self.plt.close(fig)
             self.toast.show_toast(f'Current page saved as {filename} in Downloads!')
@@ -858,12 +869,12 @@ class AnalysisScreen:
                         ax.text(0.5, -0.10, mapInfo, ha='center', va='bottom', fontsize=11, fontname='Times New Roman', transform=ax.transAxes)
                         num_specimens = len(species_data)
                         num_counties = species_data['county'].nunique()
-                        summary = f"in MT, {num_specimens} specimen{'s' if num_specimens != 1 else ''} in {num_counties} count{'ies' if num_counties != 1 else 'y'}."
+                        summary = f"{num_specimens} specimen{'s' if num_specimens != 1 else ''} in {num_counties} count{'ies' if num_counties != 1 else 'y'}."
                         ax.text(0.5, -0.16, summary, ha='center', va='bottom', fontsize=11, fontname='Times New Roman', transform=ax.transAxes)
                     else:
                         ax.axis("off")
                 fig.tight_layout(pad=0.01)
-                fig.subplots_adjust(hspace=0.0, wspace=0.0, bottom=0.04, top=0.98)
+                fig.subplots_adjust(hspace=-0.4, wspace=0.0, bottom=0.04, top=0.98)
                 buf = io.BytesIO()
                 tiff_name = f"Megachile-{gen}-{timestamp}_page{page+1}.tiff"
                 fig.savefig(buf, format="tiff", dpi=300, bbox_inches='tight')
