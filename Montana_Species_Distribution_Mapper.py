@@ -642,15 +642,24 @@ class AnalysisScreen:
                 # Add caption below the map
                 rec = species_data.iloc[0]
                 genus = str(rec.get('genus', '')).strip().title()
-                subgenus = str(rec.get('subgenus', '')).strip().title() if 'subgenus' in rec and pd.notna(rec['subgenus']) else ''
                 sp_epithet = str(rec.get('species', '')).strip().lower()
-                # Use the new figure numbering system
                 fig_number = self.get_figure_number(i)
-                caption = f"{fig_number} " + r"$\it{{{genus}}}$"
-                if subgenus:
-                    caption += r" ($\it{{{subgenus[1:-1]}}}$)"
-                caption += r" $\it{{{sp_epithet}}}$"
-                ax.text(0.01, -0.13, caption, ha='left', va='top', fontsize=11, fontname='Times New Roman', transform=ax.transAxes, wrap=True)
+                shift = 0.350  # Use the same shift as in download_current_page
+                t1 = mtext.Text(x=0.5 - shift, y=-0.10, text=f"{fig_number}", ha='center', va='bottom', fontsize=11, fontname='Times New Roman', fontstyle='normal', transform=ax.transAxes)
+                ax._add_text(t1)
+                renderer = fig.canvas.get_renderer()
+                t1.draw(renderer)
+                bbox1 = t1.get_window_extent(renderer=renderer)
+                sci_label = f"{genus} {sp_epithet}"
+                inv = ax.transAxes.inverted()
+                offset_display = bbox1.width
+                offset_axes = inv.transform([(offset_display, 0)])[0][0] - inv.transform([(0, 0)])[0][0]
+                t2 = mtext.Text(x=0.5 - (shift - 0.002) + offset_axes/2, y=-0.10, text=sci_label, ha='left', va='bottom', fontsize=11, fontname='Times New Roman', fontstyle='italic', transform=ax.transAxes)
+                ax._add_text(t2)
+                num_specimens = len(species_data)
+                num_counties = species_data['county'].nunique()
+                summary = f"{num_specimens} specimen{'s' if num_specimens != 1 else ''} in {num_counties} count{'ies' if num_counties != 1 else 'y'}."
+                ax.text(0.25, -0.16, summary, ha='center', va='bottom', fontsize=11, fontname='Times New Roman', transform=ax.transAxes)
                 # Adjust layout
                 fig.subplots_adjust(bottom=0.15, top=0.85)
                 # Store the map
@@ -761,25 +770,18 @@ class AnalysisScreen:
                     rec = species_data.iloc[0]
                     genus = str(rec.get('genus', '')).strip().title()
                     sp_epithet = str(rec.get('species', '')).strip().lower()
-                    # First line: Figure label (normal) and scientific name (italic), both Times New Roman, centered
-                    shift = 0.350  # Adjust this value as needed (try 0.02, 0.04, etc.)
+                    shift = 0.350  # Use the same shift as in download_current_page
                     t1 = mtext.Text(x=0.5 - shift, y=-0.10, text=f"{fig_number}", ha='center', va='bottom', fontsize=11, fontname='Times New Roman', fontstyle='normal', transform=ax.transAxes)
                     ax._add_text(t1)
-                    # Get the width of the first part
                     renderer = fig.canvas.get_renderer()
                     t1.draw(renderer)
                     bbox1 = t1.get_window_extent(renderer=renderer)
-                    # Draw genus and species in italic, right after 'Figure X.'
                     sci_label = f"{genus} {sp_epithet}"
-                    # Estimate offset in axes coordinates
-                    # Convert bbox1 width from pixels to axes fraction
                     inv = ax.transAxes.inverted()
                     offset_display = bbox1.width
                     offset_axes = inv.transform([(offset_display, 0)])[0][0] - inv.transform([(0, 0)])[0][0]
-                    # Place the italic text right after the normal text
                     t2 = mtext.Text(x=0.5 - (shift + 0.03) + offset_axes/2, y=-0.10, text=sci_label, ha='left', va='bottom', fontsize=11, fontname='Times New Roman', fontstyle='italic', transform=ax.transAxes)
                     ax._add_text(t2)
-                    # Second line: summary, centered
                     num_specimens = len(species_data)
                     num_counties = species_data['county'].nunique()
                     summary = f"{num_specimens} specimen{'s' if num_specimens != 1 else ''} in {num_counties} count{'ies' if num_counties != 1 else 'y'}."
@@ -854,23 +856,28 @@ class AnalysisScreen:
                         gdf_copy.boundary.plot(ax=ax, linewidth=0.7, edgecolor="black")
                         gdf_copy.plot(ax=ax, color=gdf_copy["Color"], alpha=0.6)
                         ax.axis("off")
-                        # Calculate global index for this map
+                        # --- Caption formatting ---
                         global_index = page * self.maps_per_page + idx
                         fig_number = self.get_figure_number(global_index)
                         rec = species_data.iloc[0]
                         genus = str(rec.get('genus', '')).strip().title()
-                        subgenus = str(rec.get('subgenus', '')).strip().title() if 'subgenus' in rec and pd.notna(rec['subgenus']) else ''
                         sp_epithet = str(rec.get('species', '')).strip().lower()
-                        if subgenus:
-                            sci_name = rf"$\it{{{genus}}}$ ($\it{{{subgenus}}}$) $\it{{{sp_epithet}}}$"
-                        else:
-                            sci_name = rf"$\it{{{genus}}}$ $\it{{{sp_epithet}}}$"
-                        mapInfo = f"{fig_number} {sci_name}"
-                        ax.text(0.5, -0.10, mapInfo, ha='center', va='bottom', fontsize=11, fontname='Times New Roman', transform=ax.transAxes)
+                        shift = 0.350  # Use the same shift as in download_current_page
+                        t1 = mtext.Text(x=0.5 - shift, y=-0.10, text=f"{fig_number}", ha='center', va='bottom', fontsize=11, fontname='Times New Roman', fontstyle='normal', transform=ax.transAxes)
+                        ax._add_text(t1)
+                        renderer = fig.canvas.get_renderer()
+                        t1.draw(renderer)
+                        bbox1 = t1.get_window_extent(renderer=renderer)
+                        sci_label = f"{genus} {sp_epithet}"
+                        inv = ax.transAxes.inverted()
+                        offset_display = bbox1.width
+                        offset_axes = inv.transform([(offset_display, 0)])[0][0] - inv.transform([(0, 0)])[0][0]
+                        t2 = mtext.Text(x=0.5 - (shift + 0.03) + offset_axes/2, y=-0.10, text=sci_label, ha='left', va='bottom', fontsize=11, fontname='Times New Roman', fontstyle='italic', transform=ax.transAxes)
+                        ax._add_text(t2)
                         num_specimens = len(species_data)
                         num_counties = species_data['county'].nunique()
                         summary = f"{num_specimens} specimen{'s' if num_specimens != 1 else ''} in {num_counties} count{'ies' if num_counties != 1 else 'y'}."
-                        ax.text(0.5, -0.16, summary, ha='center', va='bottom', fontsize=11, fontname='Times New Roman', transform=ax.transAxes)
+                        ax.text(0.29, -0.16, summary, ha='center', va='bottom', fontsize=11, fontname='Times New Roman', transform=ax.transAxes)
                     else:
                         ax.axis("off")
                 fig.tight_layout(pad=0.01)
