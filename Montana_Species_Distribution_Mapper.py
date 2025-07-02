@@ -654,7 +654,7 @@ class AnalysisScreen:
                 inv = ax.transAxes.inverted()
                 offset_display = bbox1.width
                 offset_axes = inv.transform([(offset_display, 0)])[0][0] - inv.transform([(0, 0)])[0][0]
-                t2 = mtext.Text(x=0.5 - (shift - 0.002) + offset_axes/2, y=-0.10, text=sci_label, ha='left', va='bottom', fontsize=11, fontname='Times New Roman', fontstyle='italic', transform=ax.transAxes)
+                t2 = mtext.Text(x=0.5 - (shift - 0.01) + offset_axes/2, y=-0.10, text=sci_label, ha='left', va='bottom', fontsize=11, fontname='Times New Roman', fontstyle='italic', transform=ax.transAxes)
                 ax._add_text(t2)
                 num_specimens = len(species_data)
                 num_counties = species_data['county'].nunique()
@@ -780,7 +780,7 @@ class AnalysisScreen:
                     inv = ax.transAxes.inverted()
                     offset_display = bbox1.width
                     offset_axes = inv.transform([(offset_display, 0)])[0][0] - inv.transform([(0, 0)])[0][0]
-                    t2 = mtext.Text(x=0.5 - (shift + 0.03) + offset_axes/2, y=-0.10, text=sci_label, ha='left', va='bottom', fontsize=11, fontname='Times New Roman', fontstyle='italic', transform=ax.transAxes)
+                    t2 = mtext.Text(x=0.5 - (shift + 0.02) + offset_axes/2, y=-0.10, text=sci_label, ha='left', va='bottom', fontsize=11, fontname='Times New Roman', fontstyle='italic', transform=ax.transAxes)
                     ax._add_text(t2)
                     num_specimens = len(species_data)
                     num_counties = species_data['county'].nunique()
@@ -872,7 +872,7 @@ class AnalysisScreen:
                         inv = ax.transAxes.inverted()
                         offset_display = bbox1.width
                         offset_axes = inv.transform([(offset_display, 0)])[0][0] - inv.transform([(0, 0)])[0][0]
-                        t2 = mtext.Text(x=0.5 - (shift + 0.03) + offset_axes/2, y=-0.10, text=sci_label, ha='left', va='bottom', fontsize=11, fontname='Times New Roman', fontstyle='italic', transform=ax.transAxes)
+                        t2 = mtext.Text(x=0.5 - (shift + 0.02) + offset_axes/2, y=-0.10, text=sci_label, ha='left', va='bottom', fontsize=11, fontname='Times New Roman', fontstyle='italic', transform=ax.transAxes)
                         ax._add_text(t2)
                         num_specimens = len(species_data)
                         num_counties = species_data['county'].nunique()
