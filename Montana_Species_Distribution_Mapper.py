@@ -597,6 +597,7 @@ class AnalysisScreen:
             # Get unique species
             unique_species = filtered["species"].dropna().unique()
             unique_species = [sp for sp in unique_species if str(sp).strip() and str(sp).lower() != 'nan']
+            unique_species = sorted(unique_species, key=lambda x: str(x).lower())
             if len(unique_species) == 0:
                 progress.stop()
                 loading_window.destroy()
@@ -644,18 +645,10 @@ class AnalysisScreen:
                 genus = str(rec.get('genus', '')).strip().title()
                 sp_epithet = str(rec.get('species', '')).strip().lower()
                 fig_number = self.get_figure_number(i)
-                shift = 0.350  # Use the same shift as in download_current_page
-                t1 = mtext.Text(x=0.5 - shift, y=-0.10, text=f"{fig_number}", ha='center', va='bottom', fontsize=11, fontname='Times New Roman', fontstyle='normal', transform=ax.transAxes)
-                ax._add_text(t1)
-                renderer = fig.canvas.get_renderer()
-                t1.draw(renderer)
-                bbox1 = t1.get_window_extent(renderer=renderer)
-                sci_label = f"{genus} {sp_epithet}"
-                inv = ax.transAxes.inverted()
-                offset_display = bbox1.width
-                offset_axes = inv.transform([(offset_display, 0)])[0][0] - inv.transform([(0, 0)])[0][0]
-                t2 = mtext.Text(x=0.5 - (shift - 0.01) + offset_axes/2, y=-0.10, text=sci_label, ha='left', va='bottom', fontsize=11, fontname='Times New Roman', fontstyle='italic', transform=ax.transAxes)
-                ax._add_text(t2)
+                # Figure number (normal)
+                ax.text(0.15, -0.10, f"{fig_number}", ha='center', va='bottom', fontsize=11, fontname='Times New Roman', fontstyle='normal', transform=ax.transAxes)
+                # Scientific name (italic)
+                ax.text(0.25, -0.10, f"{genus} {sp_epithet}", ha='left', va='bottom', fontsize=11, fontname='Times New Roman', fontstyle='italic', transform=ax.transAxes)
                 num_specimens = len(species_data)
                 num_counties = species_data['county'].nunique()
                 summary = f"{num_specimens} specimen{'s' if num_specimens != 1 else ''} in {num_counties} count{'ies' if num_counties != 1 else 'y'}."
@@ -724,7 +717,7 @@ class AnalysisScreen:
         gen = self.selected_genus.get().strip().title()
         timestamp = datetime.datetime.now().strftime("%Y%m%d_%H%M")
         page_num = self.current_page + 1
-        filename = f"Megachile-{gen}-{timestamp}_page{page_num}.tiff"
+        filename = f"{fam}-{gen}-{timestamp}_page{page_num}.svg"
         file_path = os.path.join(downloads_path, filename)
         try:
             mpl.rcParams['font.family'] = 'serif'
@@ -770,18 +763,10 @@ class AnalysisScreen:
                     rec = species_data.iloc[0]
                     genus = str(rec.get('genus', '')).strip().title()
                     sp_epithet = str(rec.get('species', '')).strip().lower()
-                    shift = 0.350  # Use the same shift as in download_current_page
-                    t1 = mtext.Text(x=0.5 - shift, y=-0.10, text=f"{fig_number}", ha='center', va='bottom', fontsize=11, fontname='Times New Roman', fontstyle='normal', transform=ax.transAxes)
-                    ax._add_text(t1)
-                    renderer = fig.canvas.get_renderer()
-                    t1.draw(renderer)
-                    bbox1 = t1.get_window_extent(renderer=renderer)
-                    sci_label = f"{genus} {sp_epithet}"
-                    inv = ax.transAxes.inverted()
-                    offset_display = bbox1.width
-                    offset_axes = inv.transform([(offset_display, 0)])[0][0] - inv.transform([(0, 0)])[0][0]
-                    t2 = mtext.Text(x=0.5 - (shift + 0.02) + offset_axes/2, y=-0.10, text=sci_label, ha='left', va='bottom', fontsize=11, fontname='Times New Roman', fontstyle='italic', transform=ax.transAxes)
-                    ax._add_text(t2)
+                    # Figure number (normal)
+                    ax.text(0.15, -0.10, f"{fig_number}", ha='center', va='bottom', fontsize=11, fontname='Times New Roman', fontstyle='normal', transform=ax.transAxes)
+                    # Scientific name (italic)
+                    ax.text(0.25, -0.10, f"{genus} {sp_epithet}", ha='left', va='bottom', fontsize=11, fontname='Times New Roman', fontstyle='italic', transform=ax.transAxes)
                     num_specimens = len(species_data)
                     num_counties = species_data['county'].nunique()
                     summary = f"{num_specimens} specimen{'s' if num_specimens != 1 else ''} in {num_counties} count{'ies' if num_counties != 1 else 'y'}."
@@ -790,10 +775,12 @@ class AnalysisScreen:
                     ax.axis("off")
             fig.tight_layout(pad=0.01)
             fig.subplots_adjust(hspace=-0.4, wspace=0.0, bottom=0.04, top=0.98)
-            fig.savefig(file_path, format="tiff", dpi=300, bbox_inches='tight')
+            # Configure matplotlib to preserve text as editable elements in SVG
+            mpl.rcParams['svg.fonttype'] = 'none'
+            fig.savefig(file_path, format="svg", bbox_inches='tight')
             self.plt.close(fig)
             self.toast.show_toast(f'Current page saved as {filename} in Downloads!')
-            print(f"✅ Current page saved as single TIFF: {file_path}")
+            print(f"✅ Current page saved as single SVG: {file_path}")
         except Exception as e:
             messagebox.showerror("Error", f"Error saving current page:\n{str(e)}\n\nPlease try again.")
 
@@ -809,12 +796,14 @@ class AnalysisScreen:
         fam = self.selected_family.get().strip().title()
         gen = self.selected_genus.get().strip().title()
         timestamp = datetime.datetime.now().strftime("%Y%m%d_%H%M")
-        zip_filename = f"Megachile-{gen}-{timestamp}.zip"
+        zip_filename = f"{fam}-{gen}-{timestamp}.zip"
         zip_path = os.path.join(downloads_path, zip_filename)
         try:
             mpl.rcParams['font.family'] = 'serif'
             mpl.rcParams['font.serif'] = ['Times New Roman', 'Times', 'DejaVu Serif', 'serif']
-            tiffs = []
+            # Configure matplotlib to preserve text as editable elements in SVG
+            mpl.rcParams['svg.fonttype'] = 'none'
+            svgs = []
             total_maps = len(self.generated_maps)
             pages = (total_maps + self.maps_per_page - 1) // self.maps_per_page
             for page in range(pages):
@@ -862,18 +851,10 @@ class AnalysisScreen:
                         rec = species_data.iloc[0]
                         genus = str(rec.get('genus', '')).strip().title()
                         sp_epithet = str(rec.get('species', '')).strip().lower()
-                        shift = 0.350  # Use the same shift as in download_current_page
-                        t1 = mtext.Text(x=0.5 - shift, y=-0.10, text=f"{fig_number}", ha='center', va='bottom', fontsize=11, fontname='Times New Roman', fontstyle='normal', transform=ax.transAxes)
-                        ax._add_text(t1)
-                        renderer = fig.canvas.get_renderer()
-                        t1.draw(renderer)
-                        bbox1 = t1.get_window_extent(renderer=renderer)
-                        sci_label = f"{genus} {sp_epithet}"
-                        inv = ax.transAxes.inverted()
-                        offset_display = bbox1.width
-                        offset_axes = inv.transform([(offset_display, 0)])[0][0] - inv.transform([(0, 0)])[0][0]
-                        t2 = mtext.Text(x=0.5 - (shift + 0.02) + offset_axes/2, y=-0.10, text=sci_label, ha='left', va='bottom', fontsize=11, fontname='Times New Roman', fontstyle='italic', transform=ax.transAxes)
-                        ax._add_text(t2)
+                        # Figure number (normal)
+                        ax.text(0.15, -0.10, f"{fig_number}", ha='center', va='bottom', fontsize=11, fontname='Times New Roman', fontstyle='normal', transform=ax.transAxes)
+                        # Scientific name (italic)
+                        ax.text(0.25, -0.10, f"{genus} {sp_epithet}", ha='left', va='bottom', fontsize=11, fontname='Times New Roman', fontstyle='italic', transform=ax.transAxes)
                         num_specimens = len(species_data)
                         num_counties = species_data['county'].nunique()
                         summary = f"{num_specimens} specimen{'s' if num_specimens != 1 else ''} in {num_counties} count{'ies' if num_counties != 1 else 'y'}."
@@ -883,14 +864,14 @@ class AnalysisScreen:
                 fig.tight_layout(pad=0.01)
                 fig.subplots_adjust(hspace=-0.4, wspace=0.0, bottom=0.04, top=0.98)
                 buf = io.BytesIO()
-                tiff_name = f"Megachile-{gen}-{timestamp}_page{page+1}.tiff"
-                fig.savefig(buf, format="tiff", dpi=300, bbox_inches='tight')
+                svg_name = f"{fam}-{gen}-{timestamp}_page{page+1}.svg"
+                fig.savefig(buf, format="svg", bbox_inches='tight')
                 self.plt.close(fig)
                 buf.seek(0)
-                tiffs.append((tiff_name, buf.read()))
+                svgs.append((svg_name, buf.read()))
             with zipfile.ZipFile(zip_path, 'w') as zf:
-                for tiff_name, tiff_bytes in tiffs:
-                    zf.writestr(tiff_name, tiff_bytes)
+                for svg_name, svg_bytes in svgs:
+                    zf.writestr(svg_name, svg_bytes)
             self.toast.show_toast(f'All maps saved as {zip_filename} in Downloads!')
             print(f"✅ All maps saved as ZIP: {zip_path}")
         except Exception as e:
@@ -1118,7 +1099,7 @@ class AnalysisScreen:
         self.next_button = ttk.Button(self.pagination_frame, text='Next', command=self.show_next_page, state='disabled')
         self.next_button.pack(side='left', padx=5)
 
-        self.download_current_button = ttk.Button(left_panel, text='Download Current Page (Single TIFF)', command=self.download_current_page, state='disabled')
+        self.download_current_button = ttk.Button(left_panel, text='Download Current Page (Single SVG)', command=self.download_current_page, state='disabled')
         self.download_current_button.pack(fill='x', pady=(0, 5))
         self.download_all_button = ttk.Button(left_panel, text='Download All Maps (ZIP)', command=self.download_all_maps, state='disabled')
         self.download_all_button.pack(fill='x', pady=(0, 5))
