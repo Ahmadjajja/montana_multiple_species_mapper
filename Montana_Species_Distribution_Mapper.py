@@ -455,6 +455,10 @@ class AnalysisScreen:
             
             # Replace the main DataFrame with only Montana records
             self.df = montana_records
+
+            # Debug print: show first few rows to confirm subgenus column is present and correct
+            print('Loaded DataFrame sample:')
+            print(self.df.head())
             
             # Calculate statistics using Montana records
             num_records = len(montana_records)
@@ -644,19 +648,21 @@ class AnalysisScreen:
                 rec = species_data.iloc[0]
                 genus = str(rec.get('genus', '')).strip().title()
                 sp_epithet = str(rec.get('species', '')).strip().lower()
+                subgenus = str(rec.get('subgenus', '')).strip().title() if 'subgenus' in rec else ''
                 fig_number = self.get_figure_number(i)
                 # Figure number (normal)
                 ax.text(0.15, -0.10, f"{fig_number}", ha='center', va='bottom', fontsize=11, fontname='Times New Roman', fontstyle='normal', transform=ax.transAxes)
-                # Scientific name (italic)
-                ax.text(0.25, -0.10, f"{genus} {sp_epithet}", ha='left', va='bottom', fontsize=11, fontname='Times New Roman', fontstyle='italic', transform=ax.transAxes)
+                # Scientific name (italic, with subgenus if enabled)
+                sci_label = self.get_caption(genus, subgenus, sp_epithet)
+                ax.text(0.21, -0.10, sci_label, ha='left', va='bottom', fontsize=11, fontname='Times New Roman', fontstyle='italic', transform=ax.transAxes)
                 num_specimens = len(species_data)
                 num_counties = species_data['county'].nunique()
                 summary = f"{num_specimens} specimen{'s' if num_specimens != 1 else ''} in {num_counties} count{'ies' if num_counties != 1 else 'y'}."
                 ax.text(0.25, -0.16, summary, ha='center', va='bottom', fontsize=11, fontname='Times New Roman', transform=ax.transAxes)
                 # Adjust layout
                 fig.subplots_adjust(bottom=0.15, top=0.85)
-                # Store the map
-                self.generated_maps.append((species, fig))
+                # Store the map with subgenus
+                self.generated_maps.append((species, subgenus, fig))
                 self.plt.close(fig)
             # Report any unmatched counties
             if unmatched_counties:
@@ -717,7 +723,7 @@ class AnalysisScreen:
         gen = self.selected_genus.get().strip().title()
         timestamp = datetime.datetime.now().strftime("%Y%m%d_%H%M")
         page_num = self.current_page + 1
-        filename = f"{fam}-{gen}-{timestamp}_page{page_num}.svg"
+        filename = f"{fam}-{gen}-{timestamp}_page{page_num}.{self.export_format_var.get()}"
         file_path = os.path.join(downloads_path, filename)
         try:
             mpl.rcParams['font.family'] = 'serif'
@@ -729,7 +735,7 @@ class AnalysisScreen:
             for idx in range(rows * cols):
                 ax = fig.add_subplot(rows, cols, idx + 1)
                 if idx < len(maps_to_save):
-                    species, species_fig = maps_to_save[idx]
+                    species, subgenus, species_fig = maps_to_save[idx]
                     fam_val = self.selected_family.get().strip()
                     gen_val = self.selected_genus.get().strip()
                     filtered = self.df
@@ -763,10 +769,12 @@ class AnalysisScreen:
                     rec = species_data.iloc[0]
                     genus = str(rec.get('genus', '')).strip().title()
                     sp_epithet = str(rec.get('species', '')).strip().lower()
+                    subgenus = str(rec.get('subgenus', '')).strip().title() if 'subgenus' in rec else ''
                     # Figure number (normal)
                     ax.text(0.15, -0.10, f"{fig_number}", ha='center', va='bottom', fontsize=11, fontname='Times New Roman', fontstyle='normal', transform=ax.transAxes)
-                    # Scientific name (italic)
-                    ax.text(0.25, -0.10, f"{genus} {sp_epithet}", ha='left', va='bottom', fontsize=11, fontname='Times New Roman', fontstyle='italic', transform=ax.transAxes)
+                    # Scientific name (italic, with subgenus if enabled)
+                    sci_label = self.get_caption(genus=genus, subgenus=subgenus, species=sp_epithet)
+                    ax.text(0.235, -0.10, sci_label, ha='left', va='bottom', fontsize=11, fontname='Times New Roman', fontstyle='italic', transform=ax.transAxes)
                     num_specimens = len(species_data)
                     num_counties = species_data['county'].nunique()
                     summary = f"{num_specimens} specimen{'s' if num_specimens != 1 else ''} in {num_counties} count{'ies' if num_counties != 1 else 'y'}."
@@ -777,10 +785,10 @@ class AnalysisScreen:
             fig.subplots_adjust(hspace=-0.4, wspace=0.0, bottom=0.04, top=0.98)
             # Configure matplotlib to preserve text as editable elements in SVG
             mpl.rcParams['svg.fonttype'] = 'none'
-            fig.savefig(file_path, format="svg", bbox_inches='tight')
+            fig.savefig(file_path, format=self.export_format_var.get(), bbox_inches='tight')
             self.plt.close(fig)
             self.toast.show_toast(f'Current page saved as {filename} in Downloads!')
-            print(f"✅ Current page saved as single SVG: {file_path}")
+            print(f"✅ Current page saved as {self.export_format_var.get()} file: {file_path}")
         except Exception as e:
             messagebox.showerror("Error", f"Error saving current page:\n{str(e)}\n\nPlease try again.")
 
@@ -817,7 +825,7 @@ class AnalysisScreen:
                 for idx in range(rows * cols):
                     ax = fig.add_subplot(rows, cols, idx + 1)
                     if idx < len(maps_to_save):
-                        species, species_fig = maps_to_save[idx]
+                        species, subgenus, species_fig = maps_to_save[idx]
                         fam_val = self.selected_family.get().strip()
                         gen_val = self.selected_genus.get().strip()
                         filtered = self.df
@@ -851,10 +859,12 @@ class AnalysisScreen:
                         rec = species_data.iloc[0]
                         genus = str(rec.get('genus', '')).strip().title()
                         sp_epithet = str(rec.get('species', '')).strip().lower()
+                        subgenus = str(rec.get('subgenus', '')).strip().title() if 'subgenus' in rec else ''
                         # Figure number (normal)
                         ax.text(0.15, -0.10, f"{fig_number}", ha='center', va='bottom', fontsize=11, fontname='Times New Roman', fontstyle='normal', transform=ax.transAxes)
-                        # Scientific name (italic)
-                        ax.text(0.25, -0.10, f"{genus} {sp_epithet}", ha='left', va='bottom', fontsize=11, fontname='Times New Roman', fontstyle='italic', transform=ax.transAxes)
+                        # Scientific name (italic, with subgenus if enabled)
+                        sci_label = self.get_caption(genus=genus, subgenus=subgenus, species=sp_epithet)
+                        ax.text(0.235, -0.10, sci_label, ha='left', va='bottom', fontsize=11, fontname='Times New Roman', fontstyle='italic', transform=ax.transAxes)
                         num_specimens = len(species_data)
                         num_counties = species_data['county'].nunique()
                         summary = f"{num_specimens} specimen{'s' if num_specimens != 1 else ''} in {num_counties} count{'ies' if num_counties != 1 else 'y'}."
@@ -864,8 +874,8 @@ class AnalysisScreen:
                 fig.tight_layout(pad=0.01)
                 fig.subplots_adjust(hspace=-0.4, wspace=0.0, bottom=0.04, top=0.98)
                 buf = io.BytesIO()
-                svg_name = f"{fam}-{gen}-{timestamp}_page{page+1}.svg"
-                fig.savefig(buf, format="svg", bbox_inches='tight')
+                svg_name = f"{fam}-{gen}-{timestamp}_page{page+1}.{self.export_format_var.get()}"
+                fig.savefig(buf, format=self.export_format_var.get(), bbox_inches='tight')
                 self.plt.close(fig)
                 buf.seek(0)
                 svgs.append((svg_name, buf.read()))
@@ -1074,6 +1084,21 @@ class AnalysisScreen:
         self.genus_dropdown = ttk.Combobox(species_frame, textvariable=self.selected_genus, state="readonly")
         self.genus_dropdown.pack(fill='x', pady=(0, 10))
         
+        # Place Export Format & Options above Generate Maps
+        # Remove export_frame creation from below download buttons
+        # Place it here, after species_frame and before button_frame
+        export_frame = ttk.LabelFrame(left_panel, text="Export Format & Options", padding="10")
+        export_frame.pack(fill='x', pady=(0, 10))
+        self.export_format_var = StringVar(self.root)
+        self.export_format_var.set('tiff')  # Default to tiff
+        radio_tiff = ttk.Radiobutton(export_frame, text="Mike’s TIFF (For Rulers Only).tiff", variable=self.export_format_var, value='tiff')
+        radio_tiff.pack(fill='x', pady=(0, 0))
+        radio_svg = ttk.Radiobutton(export_frame, text="Casey’s SVG (For the Rest of Us).svg", variable=self.export_format_var, value='svg')
+        radio_svg.pack(fill='x', pady=(0, 0))
+        self.show_subgenus_var = tk.BooleanVar(value=True)
+        subgenus_checkbox = ttk.Checkbutton(export_frame, text='Show Subgenus in Captions', variable=self.show_subgenus_var, command=self.show_current_page)
+        subgenus_checkbox.pack(fill='x', pady=(5, 0))
+        
         # Button Section
         button_frame = ttk.Frame(left_panel)
         button_frame.pack(fill='x', pady=(0, 20))
@@ -1103,6 +1128,19 @@ class AnalysisScreen:
         self.download_current_button.pack(fill='x', pady=(0, 5))
         self.download_all_button = ttk.Button(left_panel, text='Download All Maps (ZIP)', command=self.download_all_maps, state='disabled')
         self.download_all_button.pack(fill='x', pady=(0, 5))
+        
+        # Add export format radio buttons and subgenus checkbox above download buttons
+        # self.export_format_var = StringVar(self.root)
+        # self.export_format_var.set('svg')
+        # export_frame = ttk.LabelFrame(left_panel, text="Export Format & Options", padding="10")
+        # export_frame.pack(fill='x', pady=(0, 10))
+        # radio_svg = ttk.Radiobutton(export_frame, text='.svg', variable=self.export_format_var, value='svg')
+        # radio_svg.pack(side='left', padx=(0, 10))
+        # radio_tiff = ttk.Radiobutton(export_frame, text='.tiff', variable=self.export_format_var, value='tiff')
+        # radio_tiff.pack(side='left', padx=(0, 10))
+        # self.show_subgenus_var = tk.BooleanVar(value=True)
+        # subgenus_checkbox = ttk.Checkbutton(export_frame, text='Show Subgenus in Captions', variable=self.show_subgenus_var)
+        # subgenus_checkbox.pack(side='left', padx=(10, 0))
         
         # Create right panel for map display with dynamic width
         self.right_panel = ttk.Frame(main_container)
@@ -1173,7 +1211,7 @@ class AnalysisScreen:
         img_height = int(img_width * 0.75)
         grid_frame = ttk.Frame(canvas)
         grid_window = canvas.create_window((0, 0), window=grid_frame, anchor="nw")
-        for idx, (species, fig) in enumerate(maps_to_show):
+        for idx, (species, subgenus, fig) in enumerate(maps_to_show):
             row = idx // cols
             col = idx % cols
             buf = io.BytesIO()
@@ -1188,10 +1226,8 @@ class AnalysisScreen:
             map_label = ttk.Label(map_frame, image=tk_img)
             map_label.image = tk_img
             map_label.pack(pady=(5, 0))
-            caption = fig.texts[0].get_text() if fig.texts else ''
-            cap_label = ttk.Label(map_frame, text=caption, font=('Helvetica', 9, 'italic'), 
-                                wraplength=img_width-10, justify='center')
-            cap_label.pack(pady=(5, 10))
+            # Remove the extra caption label below the map
+            # (No cap_label here)
         for i in range(cols):
             grid_frame.grid_columnconfigure(i, weight=1)
         # Update navigation buttons
@@ -1223,6 +1259,13 @@ class AnalysisScreen:
         if self.current_page > 0:
             self.current_page -= 1
             self.show_current_page()
+
+    def get_caption(self, genus, subgenus, species):
+        """Return formatted caption string based on subgenus toggle."""
+        if self.show_subgenus_var.get() and subgenus and str(subgenus).strip() and str(subgenus).lower() != 'nan':
+            return f"{genus} ({subgenus}) {species}"
+        else:
+            return f"{genus} {species}"
 
 if __name__ == "__main__":
     app = MainApplication()
