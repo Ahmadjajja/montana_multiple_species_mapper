@@ -1091,7 +1091,7 @@ class AnalysisScreen:
         export_frame.pack(fill='x', pady=(0, 10))
         self.export_format_var = StringVar(self.root)
         self.export_format_var.set('tiff')  # Default to tiff
-        radio_tiff = ttk.Radiobutton(export_frame, text="Mike’s TIFF (For Rulers Only).tiff", variable=self.export_format_var, value='tiff')
+        radio_tiff = ttk.Radiobutton(export_frame, text="Michael’s TIFF (For Rulers Only).tiff", variable=self.export_format_var, value='tiff')
         radio_tiff.pack(fill='x', pady=(0, 0))
         radio_svg = ttk.Radiobutton(export_frame, text="Casey’s SVG (For the Rest of Us).svg", variable=self.export_format_var, value='svg')
         radio_svg.pack(fill='x', pady=(0, 0))
@@ -1124,7 +1124,7 @@ class AnalysisScreen:
         self.next_button = ttk.Button(self.pagination_frame, text='Next', command=self.show_next_page, state='disabled')
         self.next_button.pack(side='left', padx=5)
 
-        self.download_current_button = ttk.Button(left_panel, text='Download Current Page (Single SVG)', command=self.download_current_page, state='disabled')
+        self.download_current_button = ttk.Button(left_panel, text='Download Current Page', command=self.download_current_page, state='disabled')
         self.download_current_button.pack(fill='x', pady=(0, 5))
         self.download_all_button = ttk.Button(left_panel, text='Download All Maps (ZIP)', command=self.download_all_maps, state='disabled')
         self.download_all_button.pack(fill='x', pady=(0, 5))
