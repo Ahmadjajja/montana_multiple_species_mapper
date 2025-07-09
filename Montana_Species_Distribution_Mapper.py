@@ -644,6 +644,9 @@ class AnalysisScreen:
                 title = f"{fam.title()} > {gen.title()} > {species.title()}"
                 ax.set_title(title, fontsize=10, pad=15, wrap=True)
                 ax.axis("off")
+                
+                
+                
                 # Add caption below the map
                 rec = species_data.iloc[0]
                 genus = str(rec.get('genus', '')).strip().title()
@@ -652,13 +655,19 @@ class AnalysisScreen:
                 fig_number = self.get_figure_number(i)
                 # Figure number (normal)
                 ax.text(0.15, -0.10, f"{fig_number}", ha='center', va='bottom', fontsize=11, fontname='Times New Roman', fontstyle='normal', transform=ax.transAxes)
-                # Scientific name (italic, with subgenus if enabled)
-                sci_label = self.get_caption(genus, subgenus, sp_epithet)
-                ax.text(0.21, -0.10, sci_label, ha='left', va='bottom', fontsize=11, fontname='Times New Roman', fontstyle='italic', transform=ax.transAxes)
+                
+                # Use the complex caption rendering method
+                self.render_complex_caption(ax, genus, subgenus, sp_epithet, x=0.21, y=-0.10, show_subgenus=self.show_subgenus_var.get())
+
+                # specimen summary
                 num_specimens = len(species_data)
                 num_counties = species_data['county'].nunique()
                 summary = f"{num_specimens} specimen{'s' if num_specimens != 1 else ''} in {num_counties} count{'ies' if num_counties != 1 else 'y'}."
                 ax.text(0.25, -0.16, summary, ha='center', va='bottom', fontsize=11, fontname='Times New Roman', transform=ax.transAxes)
+                
+                
+                
+                
                 # Adjust layout
                 fig.subplots_adjust(bottom=0.15, top=0.85)
                 # Store the map with subgenus
@@ -763,6 +772,8 @@ class AnalysisScreen:
                     gdf_copy.boundary.plot(ax=ax, linewidth=0.7, edgecolor="black")
                     gdf_copy.plot(ax=ax, color=gdf_copy["Color"], alpha=0.6)
                     ax.axis("off")
+                    
+                    
                     # --- Caption formatting ---
                     global_index = self.current_page * self.maps_per_page + idx
                     fig_number = self.get_figure_number(global_index)
@@ -770,14 +781,21 @@ class AnalysisScreen:
                     genus = str(rec.get('genus', '')).strip().title()
                     sp_epithet = str(rec.get('species', '')).strip().lower()
                     subgenus = str(rec.get('subgenus', '')).strip().title() if 'subgenus' in rec else ''
+                    
                     # Figure number (normal)
                     ax.text(0.15, -0.10, f"{fig_number}", ha='center', va='bottom', fontsize=11, fontname='Times New Roman', fontstyle='normal', transform=ax.transAxes)
-                    # Scientific name (italic, with subgenus if enabled)
-                    sci_label = self.get_caption(genus=genus, subgenus=subgenus, species=sp_epithet)
-                    ax.text(0.235, -0.10, sci_label, ha='left', va='bottom', fontsize=11, fontname='Times New Roman', fontstyle='italic', transform=ax.transAxes)
+                    
+                    # Use the complex caption rendering method
+                    self.render_complex_caption(ax, genus, subgenus, sp_epithet, x=0.21, y=-0.10, show_subgenus=self.show_subgenus_var.get())
+                    
+                    
+                    
                     num_specimens = len(species_data)
                     num_counties = species_data['county'].nunique()
                     summary = f"{num_specimens} specimen{'s' if num_specimens != 1 else ''} in {num_counties} count{'ies' if num_counties != 1 else 'y'}."
+                    
+                    
+                    
                     ax.text(0.29, -0.16, summary, ha='center', va='bottom', fontsize=11, fontname='Times New Roman', transform=ax.transAxes)
                 else:
                     ax.axis("off")
@@ -862,9 +880,8 @@ class AnalysisScreen:
                         subgenus = str(rec.get('subgenus', '')).strip().title() if 'subgenus' in rec else ''
                         # Figure number (normal)
                         ax.text(0.15, -0.10, f"{fig_number}", ha='center', va='bottom', fontsize=11, fontname='Times New Roman', fontstyle='normal', transform=ax.transAxes)
-                        # Scientific name (italic, with subgenus if enabled)
-                        sci_label = self.get_caption(genus=genus, subgenus=subgenus, species=sp_epithet)
-                        ax.text(0.235, -0.10, sci_label, ha='left', va='bottom', fontsize=11, fontname='Times New Roman', fontstyle='italic', transform=ax.transAxes)
+                        # Use the complex caption rendering method
+                        self.render_complex_caption(ax, genus, subgenus, sp_epithet, x=0.21, y=-0.10, show_subgenus=self.show_subgenus_var.get())
                         num_specimens = len(species_data)
                         num_counties = species_data['county'].nunique()
                         summary = f"{num_specimens} specimen{'s' if num_specimens != 1 else ''} in {num_counties} count{'ies' if num_counties != 1 else 'y'}."
@@ -1061,7 +1078,7 @@ class AnalysisScreen:
         color_combo.bind('<Return>', self.on_color_change)
         color_combo.bind('<FocusOut>', self.on_color_change)
         
-        # Add helper text for custom colors
+        # Add helper text for custom colors 
         helper_label = ttk.Label(
             color_frame, 
             text="Tip: You can type any valid color name or hex code (e.g., #FF5733)",
@@ -1096,7 +1113,7 @@ class AnalysisScreen:
         radio_svg = ttk.Radiobutton(export_frame, text="Casey’s SVG (For the Rest of Us).svg", variable=self.export_format_var, value='svg')
         radio_svg.pack(fill='x', pady=(0, 0))
         self.show_subgenus_var = tk.BooleanVar(value=True)
-        subgenus_checkbox = ttk.Checkbutton(export_frame, text='Show Subgenus in Captions', variable=self.show_subgenus_var, command=self.show_current_page)
+        subgenus_checkbox = ttk.Checkbutton(export_frame, text='Show Subgenus in Captions', variable=self.show_subgenus_var, command=self.regenerate_maps_with_new_subgenus_setting)
         subgenus_checkbox.pack(fill='x', pady=(5, 0))
         
         # Button Section
@@ -1266,6 +1283,50 @@ class AnalysisScreen:
             return f"{genus} ({subgenus}) {species}"
         else:
             return f"{genus} {species}"
+
+    def regenerate_maps_with_new_subgenus_setting(self):
+        """Regenerate maps when subgenus checkbox is toggled."""
+        if self.generated_maps:  # Only regenerate if maps already exist
+            # Store current page
+            current_page = self.current_page
+            # Regenerate maps
+            self.generate_map()
+            # Restore current page
+            self.current_page = current_page
+            # Show current page
+            self.show_current_page()
+
+    def render_complex_caption(self, ax, genus, subgenus, species, x, y, show_subgenus, font_size=11):
+        """Render caption with complex styling (italic genus, italic subgenus in parentheses, italic species)."""
+        # Draw the canvas to get the renderer
+        ax.figure.canvas.draw()
+        renderer = ax.figure.canvas.get_renderer()
+
+        def get_text_width(text, fontstyle='normal', fontname='Times New Roman', fontsize=font_size):
+            t = ax.text(0, 0, text, fontname=fontname, fontstyle=fontstyle, fontsize=fontsize, transform=ax.transAxes)
+            bb = t.get_window_extent(renderer=renderer)
+            inv = ax.transAxes.inverted()
+            bb_axes = inv.transform([(bb.x0, bb.y0), (bb.x1, bb.y1)])
+            width = bb_axes[1][0] - bb_axes[0][0]
+            t.remove()
+            return width
+
+        # Start at the specified x position
+        cur_x = x
+        # Genus (italic)
+        ax.text(cur_x, y, f"{genus}", ha='left', va='bottom', fontsize=font_size, fontname='Times New Roman', fontstyle='italic', transform=ax.transAxes)
+        cur_x += get_text_width(f"{genus}", fontstyle='italic')
+        # Subgenus (optional)
+        if show_subgenus and subgenus and str(subgenus).strip() and str(subgenus).lower() != 'nan':
+            ax.text(cur_x, y, " (", ha='left', va='bottom', fontsize=font_size, fontname='Times New Roman', fontstyle='normal', transform=ax.transAxes)
+            cur_x += get_text_width(" (", fontstyle='normal')
+            ax.text(cur_x, y, f"{subgenus}", ha='left', va='bottom', fontsize=font_size, fontname='Times New Roman', fontstyle='italic', transform=ax.transAxes)
+            cur_x += get_text_width(f"{subgenus}", fontstyle='italic')
+            ax.text(cur_x, y, ")", ha='left', va='bottom', fontsize=font_size, fontname='Times New Roman', fontstyle='normal', transform=ax.transAxes)
+            cur_x += get_text_width(")", fontstyle='normal')
+            ax.text(cur_x, y, f" {species}", ha='left', va='bottom', fontsize=font_size, fontname='Times New Roman', fontstyle='italic', transform=ax.transAxes)
+        else:
+            ax.text(cur_x, y, f" {species}", ha='left', va='bottom', fontsize=font_size, fontname='Times New Roman', fontstyle='italic', transform=ax.transAxes)
 
 if __name__ == "__main__":
     app = MainApplication()
