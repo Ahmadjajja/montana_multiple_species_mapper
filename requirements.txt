@@ -18,7 +18,7 @@ shapely==2.1.1
 six==1.17.0
 tzdata==2025.2
 tkinter>=8.6
-pyinstaller>=6.0.0  # For creating executable
+pyinstaller  # For building Windows .exe (no console)
 pytest>=7.0.0  # For running tests
 black>=23.0.0  # For code formatting
 flake8>=6.0.0  # For code linting

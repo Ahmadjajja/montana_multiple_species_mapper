@@ -786,7 +786,7 @@ class AnalysisScreen:
                     ax.text(0.15, -0.10, f"{fig_number}", ha='center', va='bottom', fontsize=11, fontname='Times New Roman', fontstyle='normal', transform=ax.transAxes)
                     
                     # Use the complex caption rendering method
-                    self.render_complex_caption(ax, genus, subgenus, sp_epithet, x=0.21, y=-0.10, show_subgenus=self.show_subgenus_var.get())
+                    self.render_complex_caption_for_download(ax, genus, subgenus, sp_epithet, x=0.235, y=-0.10, show_subgenus=self.show_subgenus_var.get())
                     
                     
                     
@@ -881,7 +881,7 @@ class AnalysisScreen:
                         # Figure number (normal)
                         ax.text(0.15, -0.10, f"{fig_number}", ha='center', va='bottom', fontsize=11, fontname='Times New Roman', fontstyle='normal', transform=ax.transAxes)
                         # Use the complex caption rendering method
-                        self.render_complex_caption(ax, genus, subgenus, sp_epithet, x=0.21, y=-0.10, show_subgenus=self.show_subgenus_var.get())
+                        self.render_complex_caption_for_download(ax, genus, subgenus, sp_epithet, x=0.235, y=-0.10, show_subgenus=self.show_subgenus_var.get())
                         num_specimens = len(species_data)
                         num_counties = species_data['county'].nunique()
                         summary = f"{num_specimens} specimen{'s' if num_specimens != 1 else ''} in {num_counties} count{'ies' if num_counties != 1 else 'y'}."
@@ -1322,6 +1322,38 @@ class AnalysisScreen:
             cur_x += get_text_width(" (", fontstyle='normal')
             ax.text(cur_x, y, f"{subgenus}", ha='left', va='bottom', fontsize=font_size, fontname='Times New Roman', fontstyle='italic', transform=ax.transAxes)
             cur_x += get_text_width(f"{subgenus}", fontstyle='italic')
+            ax.text(cur_x, y, ")", ha='left', va='bottom', fontsize=font_size, fontname='Times New Roman', fontstyle='normal', transform=ax.transAxes)
+            cur_x += get_text_width(")", fontstyle='normal')
+            ax.text(cur_x, y, f" {species}", ha='left', va='bottom', fontsize=font_size, fontname='Times New Roman', fontstyle='italic', transform=ax.transAxes)
+        else:
+            ax.text(cur_x, y, f" {species}", ha='left', va='bottom', fontsize=font_size, fontname='Times New Roman', fontstyle='italic', transform=ax.transAxes)
+            
+    def render_complex_caption_for_download(self, ax, genus, subgenus, species, x, y, show_subgenus, font_size=11):
+        """Render caption with complex styling (italic genus, italic subgenus in parentheses, italic species)."""
+        # Draw the canvas to get the renderer
+        ax.figure.canvas.draw()
+        renderer = ax.figure.canvas.get_renderer()
+
+        def get_text_width(text, fontstyle='normal', fontname='Times New Roman', fontsize=font_size):
+            t = ax.text(0, 0, text, fontname=fontname, fontstyle=fontstyle, fontsize=fontsize, transform=ax.transAxes)
+            bb = t.get_window_extent(renderer=renderer)
+            inv = ax.transAxes.inverted()
+            bb_axes = inv.transform([(bb.x0, bb.y0), (bb.x1, bb.y1)])
+            width = bb_axes[1][0] - bb_axes[0][0]
+            t.remove()
+            return width
+
+        # Start at the specified x position
+        cur_x = x
+        # Genus (italic)
+        ax.text(cur_x, y, f"{genus}", ha='left', va='bottom', fontsize=font_size, fontname='Times New Roman', fontstyle='italic', transform=ax.transAxes)
+        cur_x += (get_text_width(f"{genus}", fontstyle='italic') * 0.716)
+        # Subgenus (optional)
+        if show_subgenus and subgenus and str(subgenus).strip() and str(subgenus).lower() != 'nan':
+            ax.text(cur_x, y, " (", ha='left', va='bottom', fontsize=font_size, fontname='Times New Roman', fontstyle='normal', transform=ax.transAxes)
+            cur_x += (get_text_width(" (", fontstyle='normal') - 0.01)
+            ax.text(cur_x, y, f"{subgenus}", ha='left', va='bottom', fontsize=font_size, fontname='Times New Roman', fontstyle='italic', transform=ax.transAxes)
+            cur_x += (get_text_width(f"{subgenus}", fontstyle='italic') * 0.67)
             ax.text(cur_x, y, ")", ha='left', va='bottom', fontsize=font_size, fontname='Times New Roman', fontstyle='normal', transform=ax.transAxes)
             cur_x += get_text_width(")", fontstyle='normal')
             ax.text(cur_x, y, f" {species}", ha='left', va='bottom', fontsize=font_size, fontname='Times New Roman', fontstyle='italic', transform=ax.transAxes)
