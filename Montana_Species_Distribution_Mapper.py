@@ -153,20 +153,33 @@ class ToastNotification:
 
 class MainApplication:
     def __init__(self):
+        # Set Windows taskbar icon early (before creating the root window)
+        if os.name == 'nt':  # Windows
+            try:
+                import ctypes
+                if getattr(sys, 'frozen', False):
+                    # If running as exe, use the exe path itself for taskbar icon
+                    exe_path = sys.executable
+                    ctypes.windll.shell32.SetCurrentProcessExplicitAppUserModelID(exe_path)
+                else:
+                    # If running as script, try to set the icon path
+                    icon_path = self._get_icon_path_static()
+                    if icon_path and os.path.exists(icon_path):
+                        ctypes.windll.shell32.SetCurrentProcessExplicitAppUserModelID(icon_path)
+                
+                # Also try to set the window class name for better icon handling
+                try:
+                    ctypes.windll.kernel32.SetConsoleTitleW("Montana Species Distribution Mapper")
+                except:
+                    pass
+            except Exception as e:
+                print(f"Warning: Could not set taskbar icon: {e}")
+        
         # Create and hide the root window
         self.root = tk.Tk()
         
         # Set the application icon
-        if getattr(sys, 'frozen', False):
-            # If running as exe
-            base_dir = sys._MEIPASS
-        else:
-            # If running as script
-            base_dir = os.path.dirname(os.path.abspath(__file__))
-        
-        icon_path = os.path.join(base_dir, "app_icon.ico")
-        if os.path.exists(icon_path):
-            self.root.iconbitmap(icon_path)
+        self.set_windows_icon(self.root)
         
         # Get screen information
         self.primary_width, self.primary_height, self.all_screens_width, self.all_screens_height = get_screen_geometry()
@@ -248,6 +261,64 @@ class MainApplication:
         self.root.quit()
         sys.exit(1)
     
+    @staticmethod
+    def _get_icon_path_static():
+        """Static method to get the path to the application icon, handling both script and exe modes."""
+        if getattr(sys, 'frozen', False):
+            # If running as exe, try multiple possible locations
+            base_dir = sys._MEIPASS
+            possible_paths = [
+                os.path.join(base_dir, "app_icon.ico"),
+                os.path.join(os.path.dirname(sys.executable), "app_icon.ico"),
+                os.path.join(base_dir, "..", "app_icon.ico"),
+                # Try the executable itself as a fallback
+                sys.executable
+            ]
+        else:
+            # If running as script
+            base_dir = os.path.dirname(os.path.abspath(__file__))
+            possible_paths = [
+                os.path.join(base_dir, "app_icon.ico")
+            ]
+        
+        # Try each possible path
+        for path in possible_paths:
+            if os.path.exists(path):
+                return path
+        
+        return None
+
+    def get_icon_path(self):
+        """Get the path to the application icon, handling both script and exe modes."""
+        return self._get_icon_path_static()
+    
+    def set_windows_icon(self, window):
+        """Set icon for a window with proper Windows handling."""
+        icon_path = self.get_icon_path()
+        if icon_path and os.path.exists(icon_path):
+            try:
+                window.iconbitmap(icon_path)
+                # Force icon refresh on Windows
+                if os.name == 'nt':
+                    window.update_idletasks()
+                    # Additional Windows-specific icon handling
+                    try:
+                        import ctypes
+                        hwnd = window.winfo_id()
+                        if hwnd:
+                            # Set the window icon for the taskbar
+                            ctypes.windll.user32.SendMessageW(hwnd, 0x80, 0, 0)  # WM_SETICON
+                            ctypes.windll.user32.SendMessageW(hwnd, 0x80, 1, 0)  # WM_SETICON for small icon
+                    except Exception as e:
+                        print(f"Warning: Could not set Windows-specific icon: {e}")
+            except Exception as e:
+                print(f"Warning: Could not set window icon: {e}")
+        else:
+            print(f"Warning: Icon path not found or invalid: {icon_path}")
+            if getattr(sys, 'frozen', False):
+                print(f"Running as executable. Executable path: {sys.executable}")
+                print(f"MEIPASS directory: {sys._MEIPASS}")
+
     def load_shapefile(self):
         try:
             # Get the application's base directory
@@ -290,13 +361,7 @@ class AnalysisScreen:
         self.FigureCanvasTkAgg = main_app.FigureCanvasTkAgg
         
         # Set window icon
-        if getattr(sys, 'frozen', False):
-            base_dir = sys._MEIPASS
-        else:
-            base_dir = os.path.dirname(os.path.abspath(__file__))
-        icon_path = os.path.join(base_dir, "app_icon.ico")
-        if os.path.exists(icon_path):
-            self.root.iconbitmap(icon_path)
+        main_app.set_windows_icon(self.root)
         
         # Get screen dimensions
         screen_width = self.root.winfo_screenwidth()
@@ -785,8 +850,11 @@ class AnalysisScreen:
                     # Figure number (normal)
                     ax.text(0.15, -0.10, f"{fig_number}", ha='center', va='bottom', fontsize=11, fontname='Times New Roman', fontstyle='normal', transform=ax.transAxes)
                     
-                    # Use the complex caption rendering method
-                    self.render_complex_caption_for_download(ax, genus, subgenus, sp_epithet, x=0.235, y=-0.10, show_subgenus=self.show_subgenus_var.get())
+                    # Use the complex caption rendering method based on export format
+                    if self.export_format_var.get() == "svg":
+                        self.render_complex_caption_for_download_svg(ax, genus, subgenus, sp_epithet, x=0.235, y=-0.10, show_subgenus=self.show_subgenus_var.get())
+                    elif self.export_format_var.get() == "tiff":
+                        self.render_complex_caption_for_download_tiff(ax, genus, subgenus, sp_epithet, x=0.235, y=-0.10, show_subgenus=self.show_subgenus_var.get())
                     
                     
                     
@@ -880,8 +948,11 @@ class AnalysisScreen:
                         subgenus = str(rec.get('subgenus', '')).strip().title() if 'subgenus' in rec else ''
                         # Figure number (normal)
                         ax.text(0.15, -0.10, f"{fig_number}", ha='center', va='bottom', fontsize=11, fontname='Times New Roman', fontstyle='normal', transform=ax.transAxes)
-                        # Use the complex caption rendering method
-                        self.render_complex_caption_for_download(ax, genus, subgenus, sp_epithet, x=0.235, y=-0.10, show_subgenus=self.show_subgenus_var.get())
+                        # Use the complex caption rendering method based on export format
+                        if self.export_format_var.get() == "svg":
+                            self.render_complex_caption_for_download_svg(ax, genus, subgenus, sp_epithet, x=0.235, y=-0.10, show_subgenus=self.show_subgenus_var.get())
+                        elif self.export_format_var.get() == "tiff":
+                            self.render_complex_caption_for_download_tiff(ax, genus, subgenus, sp_epithet, x=0.235, y=-0.10, show_subgenus=self.show_subgenus_var.get())
                         num_specimens = len(species_data)
                         num_counties = species_data['county'].nunique()
                         summary = f"{num_specimens} specimen{'s' if num_specimens != 1 else ''} in {num_counties} count{'ies' if num_counties != 1 else 'y'}."
@@ -1328,8 +1399,72 @@ class AnalysisScreen:
         else:
             ax.text(cur_x, y, f" {species}", ha='left', va='bottom', fontsize=font_size, fontname='Times New Roman', fontstyle='italic', transform=ax.transAxes)
             
-    def render_complex_caption_for_download(self, ax, genus, subgenus, species, x, y, show_subgenus, font_size=11):
-        """Render caption with complex styling (italic genus, italic subgenus in parentheses, italic species)."""
+    # def render_complex_caption_for_download(self, ax, genus, subgenus, species, x, y, show_subgenus, font_size=11):
+    #     """Render caption with complex styling (italic genus, italic subgenus in parentheses, italic species)."""
+    #     # Draw the canvas to get the renderer
+    #     ax.figure.canvas.draw()
+    #     renderer = ax.figure.canvas.get_renderer()
+
+    #     def get_text_width(text, fontstyle='normal', fontname='Times New Roman', fontsize=font_size):
+    #         t = ax.text(0, 0, text, fontname=fontname, fontstyle=fontstyle, fontsize=fontsize, transform=ax.transAxes)
+    #         bb = t.get_window_extent(renderer=renderer)
+    #         inv = ax.transAxes.inverted()
+    #         bb_axes = inv.transform([(bb.x0, bb.y0), (bb.x1, bb.y1)])
+    #         width = bb_axes[1][0] - bb_axes[0][0]
+    #         t.remove()
+    #         return width
+
+    #     # Start at the specified x position
+    #     cur_x = x
+    #     # Genus (italic)
+    #     ax.text(cur_x, y, f"{genus}", ha='left', va='bottom', fontsize=font_size, fontname='Times New Roman', fontstyle='italic', transform=ax.transAxes)
+    #     cur_x += (get_text_width(f"{genus}", fontstyle='italic') * 0.716)
+    #     # Subgenus (optional)
+    #     if show_subgenus and subgenus and str(subgenus).strip() and str(subgenus).lower() != 'nan':
+    #         ax.text(cur_x, y, " (", ha='left', va='bottom', fontsize=font_size, fontname='Times New Roman', fontstyle='normal', transform=ax.transAxes)
+    #         cur_x += (get_text_width(" (", fontstyle='normal') - 0.01)
+    #         ax.text(cur_x, y, f"{subgenus}", ha='left', va='bottom', fontsize=font_size, fontname='Times New Roman', fontstyle='italic', transform=ax.transAxes)
+    #         cur_x += (get_text_width(f"{subgenus}", fontstyle='italic') * 0.67)
+    #         ax.text(cur_x, y, ")", ha='left', va='bottom', fontsize=font_size, fontname='Times New Roman', fontstyle='normal', transform=ax.transAxes)
+    #         cur_x += get_text_width(")", fontstyle='normal')
+    #         ax.text(cur_x, y, f" {species}", ha='left', va='bottom', fontsize=font_size, fontname='Times New Roman', fontstyle='italic', transform=ax.transAxes)
+    #     else:
+    #         ax.text(cur_x, y, f" {species}", ha='left', va='bottom', fontsize=font_size, fontname='Times New Roman', fontstyle='italic', transform=ax.transAxes)
+
+    def render_complex_caption_for_download_svg(self, ax, genus, subgenus, species, x, y, show_subgenus, font_size=11):
+        """Render caption with complex styling for SVG format (italic genus, italic subgenus in parentheses, italic species)."""
+        # Draw the canvas to get the renderer
+        ax.figure.canvas.draw()
+        renderer = ax.figure.canvas.get_renderer()
+
+        def get_text_width(text, fontstyle='normal', fontname='Times New Roman', fontsize=font_size):
+            t = ax.text(0, 0, text, fontname=fontname, fontstyle=fontstyle, fontsize=fontsize, transform=ax.transAxes)
+            bb = t.get_window_extent(renderer=renderer)
+            inv = ax.transAxes.inverted()
+            bb_axes = inv.transform([(bb.x0, bb.y0), (bb.x1, bb.y1)])
+            width = bb_axes[1][0] - bb_axes[0][0]
+            t.remove()
+            return width
+
+        # Start at the specified x position
+        cur_x = x
+        # Genus (italic)
+        ax.text(cur_x, y, f"{genus}", ha='left', va='bottom', fontsize=font_size, fontname='Times New Roman', fontstyle='italic', transform=ax.transAxes)
+        cur_x += (get_text_width(f"{genus}", fontstyle='italic') * 0.716)
+        # Subgenus (optional)
+        if show_subgenus and subgenus and str(subgenus).strip() and str(subgenus).lower() != 'nan':
+            ax.text(cur_x, y, " (", ha='left', va='bottom', fontsize=font_size, fontname='Times New Roman', fontstyle='normal', transform=ax.transAxes)
+            cur_x += (get_text_width(" (", fontstyle='normal') - 0.021)
+            ax.text(cur_x, y, f"{subgenus}", ha='left', va='bottom', fontsize=font_size, fontname='Times New Roman', fontstyle='italic', transform=ax.transAxes)
+            cur_x += (get_text_width(f"{subgenus}", fontstyle='italic') * 0.67)
+            ax.text(cur_x, y, ")", ha='left', va='bottom', fontsize=font_size, fontname='Times New Roman', fontstyle='normal', transform=ax.transAxes)
+            cur_x += get_text_width(")", fontstyle='normal')
+            ax.text(cur_x, y, f" {species}", ha='left', va='bottom', fontsize=font_size, fontname='Times New Roman', fontstyle='italic', transform=ax.transAxes)
+        else:
+            ax.text(cur_x, y, f" {species}", ha='left', va='bottom', fontsize=font_size, fontname='Times New Roman', fontstyle='italic', transform=ax.transAxes)
+
+    def render_complex_caption_for_download_tiff(self, ax, genus, subgenus, species, x, y, show_subgenus, font_size=11):
+        """Render caption with complex styling for TIFF format (italic genus, italic subgenus in parentheses, italic species)."""
         # Draw the canvas to get the renderer
         ax.figure.canvas.draw()
         renderer = ax.figure.canvas.get_renderer()
