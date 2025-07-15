@@ -22,6 +22,7 @@ The Montana Species Distribution Mapper is a desktop application designed to hel
 ### 1. Species Distribution Mapping
 - Generate individual distribution maps for each species
 - Color-coded counties showing species occurrence
+- **NEW: Year-based color filtering** - Distinguish between historical and recent records
 - Customizable color schemes for different species or groups
 - Publication-ready scientific name formatting
 - Specimen count and county coverage information
@@ -38,6 +39,7 @@ The Montana Species Distribution Mapper is a desktop application designed to hel
 - Batch export capabilities (ZIP format)
 - Individual page downloads
 - Publication-ready map layouts with proper scientific formatting
+- **NEW: Dynamic legends** showing year-based color explanations
 
 ### 4. User Experience
 - User-friendly interface with tooltips and helper text
@@ -107,7 +109,7 @@ Your Excel file must include the following columns:
 - `family`: Taxonomic family names (required)
 - `genus`: Taxonomic genus names (required)
 - `species`: Species names (required)
-- `year`: Collection year (YYYY format) - optional
+- `year`: Collection year (YYYY format) - **optional but enables year-based color filtering**
 - `subgenus`: Subgenus names - optional
 
 ### Data Validation
@@ -137,7 +139,12 @@ Your Excel file must include the following columns:
    - Check for any county name mismatches
 
 3. **Configure Settings**
-   - Select color for species occurrence (default: grey)
+   - **Year-Based Color Filtering** (NEW):
+     - Set "Pre-Year Color" (e.g., green for historical records)
+     - Set "Post-Year Color" (e.g., red for recent records)
+     - Set "Single Color" (e.g., grey for records without year data)
+     - Enter "Split by Year" (e.g., 2014) to enable temporal filtering
+     - Leave year empty to use single color for all records
    - Choose taxonomic filters:
      - Select Family (or "All" for all families)
      - Select Genus (or "All" for all genera in family)

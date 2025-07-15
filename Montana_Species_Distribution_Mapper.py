@@ -379,13 +379,21 @@ class AnalysisScreen:
         self.current_fig = None
         
         # Initialize StringVar variables
-        self.color_var = StringVar(self.root)
         self.selected_family = StringVar(self.root)
         self.selected_genus = StringVar(self.root)
         self.selected_file_var = StringVar(self.root)
         
+        # New variables for year-based color filtering
+        self.pre_year_color_var = StringVar(self.root)
+        self.post_year_color_var = StringVar(self.root)
+        self.single_color_var = StringVar(self.root)
+        self.split_year_var = StringVar(self.root)
+        
         # Set default values
-        self.color_var.set("grey")
+        self.pre_year_color_var.set("green")
+        self.post_year_color_var.set("red")
+        self.single_color_var.set("grey")
+        self.split_year_var.set("")
         self.selected_file_var.set("No file selected")
         
         # Create toast notification instance
@@ -502,6 +510,18 @@ class AnalysisScreen:
             for col in ["family", "genus", "species"]:
                 self.df[col] = self.df[col].astype(str).str.strip().str.lower()
             
+            # Process year column if it exists
+            if "year" in self.df.columns:
+                # Convert year to numeric, invalid values become NaN
+                self.df["year"] = pd.to_numeric(self.df["year"], errors='coerce')
+                # Count records with valid years
+                valid_years = self.df["year"].notna().sum()
+                print(f"Found {valid_years} records with valid years out of {len(self.df)} total records")
+            else:
+                # Create empty year column if it doesn't exist
+                self.df["year"] = pd.NA
+                print("No 'year' column found in data. Year-based coloring will use single color.")
+            
             # Get valid Montana counties from shapefile
             valid_counties = set(self.standardize_county_names(self.gdf["County"]))
             
@@ -532,6 +552,13 @@ class AnalysisScreen:
             num_species = len(montana_records["species"].unique())
             num_counties = len(montana_records["county"].unique())
             
+            # Count records with valid years
+            if "year" in montana_records.columns:
+                num_with_years = montana_records["year"].notna().sum()
+                year_info = f"\n• Records with Year Data: {num_with_years:,}"
+            else:
+                year_info = "\n• Year Data: Not available"
+            
             # Get valid families (non-empty/non-null values)
             valid_families = sorted(montana_records["family"].dropna().unique())
             valid_families = [f for f in valid_families if str(f).strip() and str(f).lower() != 'nan']
@@ -557,7 +584,8 @@ class AnalysisScreen:
                 f"• Unique Families: {num_families}\n"
                 f"• Unique Genera: {num_genera}\n"
                 f"• Unique Species: {num_species}\n"
-                f"• Counties Covered: {num_counties}\n\n"
+                f"• Counties Covered: {num_counties}\n"
+                f"{year_info}\n\n"
                 "Please select a Family to continue."
             )
             
@@ -603,18 +631,80 @@ class AnalysisScreen:
             return False
 
     def validate_colors(self):
-        """Validate selected color"""
-        color = self.color_var.get()
+        """Validate selected colors"""
+        colors_to_validate = [
+            ("Pre-Year Color", self.pre_year_color_var.get()),
+            ("Post-Year Color", self.post_year_color_var.get()),
+            ("Single Color", self.single_color_var.get())
+        ]
         
-        if not self.is_valid_color(color):
-            error_msg = f"Invalid color detected: '{color}'"
-            self.toast.show_toast(error_msg, duration=5000, error=True)
-            return False
+        for color_name, color_value in colors_to_validate:
+            if not self.is_valid_color(color_value):
+                error_msg = f"Invalid {color_name}: '{color_value}'"
+                self.toast.show_toast(error_msg, duration=5000, error=True)
+                return False
         return True
 
     def on_color_change(self, event=None):
         """Validate colors when they change"""
         self.validate_colors()
+
+    def get_color_for_record(self, record_year):
+        """
+        Determine the appropriate color for a record based on year logic.
+        
+        Args:
+            record_year: The year from the record (can be None, NaN, or a number)
+            
+        Returns:
+            str: The color to use for this record
+        """
+        split_year_str = self.split_year_var.get().strip()
+        
+        # If no split year is specified, use single color
+        if not split_year_str:
+            return self.single_color_var.get()
+        
+        # Try to convert split year to integer
+        try:
+            split_year = int(split_year_str)
+        except ValueError:
+            # If split year is invalid, use single color
+            return self.single_color_var.get()
+        
+        # If record has no year or invalid year, use single color
+        if record_year is None or pd.isna(record_year):
+            return self.single_color_var.get()
+        
+        try:
+            record_year_int = int(record_year)
+        except (ValueError, TypeError):
+            # If record year is invalid, use single color
+            return self.single_color_var.get()
+        
+        # Apply year-based logic
+        if record_year_int <= split_year:
+            return self.pre_year_color_var.get()
+        else:
+            return self.post_year_color_var.get()
+
+    def get_legend_text(self):
+        """
+        Generate legend text based on current year and color settings.
+        
+        Returns:
+            str: The legend text to display
+        """
+        split_year_str = self.split_year_var.get().strip()
+        
+        if not split_year_str:
+            return f"Color Used: {self.single_color_var.get().title()}"
+        
+        try:
+            split_year = int(split_year_str)
+            return f"Before or equal to {split_year} → {self.pre_year_color_var.get().title()}\nAfter {split_year} → {self.post_year_color_var.get().title()}"
+        except ValueError:
+            return f"Color Used: {self.single_color_var.get().title()}"
 
     def generate_map(self):
         if self.map_canvas:
@@ -696,7 +786,44 @@ class AnalysisScreen:
                     county_lower = self.standardize_county_names(pd.Series([county])).iloc[0]
                     if county_lower in valid_counties:
                         mask = self.standardize_county_names(gdf_copy["County"]) == county_lower
-                        gdf_copy.loc[mask, "Color"] = self.color_var.get()
+                        # Get all records for this county and species
+                        county_records = species_data[species_data["county"] == county]
+                        
+                        # Determine color based on year logic
+                        # If any record has a year that falls in the post-year category, use post-year color
+                        # Otherwise, use pre-year color or single color
+                        split_year_str = self.split_year_var.get().strip()
+                        if split_year_str:
+                            try:
+                                split_year = int(split_year_str)
+                                has_post_year_record = False
+                                has_pre_year_record = False
+                                
+                                for _, record in county_records.iterrows():
+                                    record_year = record.get('year')
+                                    if record_year is not None and not pd.isna(record_year):
+                                        try:
+                                            record_year_int = int(record_year)
+                                            if record_year_int > split_year:
+                                                has_post_year_record = True
+                                            else:
+                                                has_pre_year_record = True
+                                        except (ValueError, TypeError):
+                                            pass
+                                
+                                # Determine final color for this county
+                                if has_post_year_record:
+                                    color = self.post_year_color_var.get()
+                                elif has_pre_year_record:
+                                    color = self.pre_year_color_var.get()
+                                else:
+                                    color = self.single_color_var.get()
+                            except ValueError:
+                                color = self.single_color_var.get()
+                        else:
+                            color = self.single_color_var.get()
+                        
+                        gdf_copy.loc[mask, "Color"] = color
                     else:
                         unmatched_counties.add(county)
                 # Create figure for this species
@@ -804,6 +931,12 @@ class AnalysisScreen:
             mpl.rcParams['font.serif'] = ['Times New Roman', 'Times', 'DejaVu Serif', 'serif']
             fig = self.plt.figure(figsize=(13.2, 19))
             fig.suptitle(f"{fam} > {gen}", fontsize=18, fontweight='bold', y=0.99)
+            
+            # Add legend text below the main title
+            legend_text = self.get_legend_text()
+            fig.text(0.5, 0.95, legend_text, ha='center', va='top', fontsize=12, 
+                    fontname='Times New Roman', transform=fig.transFigure)
+            
             cols = 3
             rows = 5
             for idx in range(rows * cols):
@@ -833,7 +966,44 @@ class AnalysisScreen:
                         county_lower = self.standardize_county_names(pd.Series([county])).iloc[0]
                         if county_lower in valid_counties:
                             mask = self.standardize_county_names(gdf_copy["County"]) == county_lower
-                            gdf_copy.loc[mask, "Color"] = self.color_var.get()
+                            # Get all records for this county and species
+                            county_records = species_data[species_data["county"] == county]
+                            
+                            # Determine color based on year logic
+                            # If any record has a year that falls in the post-year category, use post-year color
+                            # Otherwise, use pre-year color or single color
+                            split_year_str = self.split_year_var.get().strip()
+                            if split_year_str:
+                                try:
+                                    split_year = int(split_year_str)
+                                    has_post_year_record = False
+                                    has_pre_year_record = False
+                                    
+                                    for _, record in county_records.iterrows():
+                                        record_year = record.get('year')
+                                        if record_year is not None and not pd.isna(record_year):
+                                            try:
+                                                record_year_int = int(record_year)
+                                                if record_year_int > split_year:
+                                                    has_post_year_record = True
+                                                else:
+                                                    has_pre_year_record = True
+                                            except (ValueError, TypeError):
+                                                pass
+                                    
+                                    # Determine final color for this county
+                                    if has_post_year_record:
+                                        color = self.post_year_color_var.get()
+                                    elif has_pre_year_record:
+                                        color = self.pre_year_color_var.get()
+                                    else:
+                                        color = self.single_color_var.get()
+                                except ValueError:
+                                    color = self.single_color_var.get()
+                            else:
+                                color = self.single_color_var.get()
+                            
+                            gdf_copy.loc[mask, "Color"] = color
                     gdf_copy.boundary.plot(ax=ax, linewidth=0.7, edgecolor="black")
                     gdf_copy.plot(ax=ax, color=gdf_copy["Color"], alpha=0.6)
                     ax.axis("off")
@@ -906,6 +1076,12 @@ class AnalysisScreen:
                 maps_to_save = self.generated_maps[start:end]
                 fig = self.plt.figure(figsize=(13.2, 19))
                 fig.suptitle(f"{fam} > {gen}", fontsize=18, fontweight='bold', y=0.99)
+                
+                # Add legend text below the main title
+                legend_text = self.get_legend_text()
+                fig.text(0.5, 0.95, legend_text, ha='center', va='top', fontsize=12, 
+                        fontname='Times New Roman', transform=fig.transFigure)
+                
                 cols = 3
                 rows = 5
                 for idx in range(rows * cols):
@@ -935,7 +1111,44 @@ class AnalysisScreen:
                             county_lower = self.standardize_county_names(pd.Series([county])).iloc[0]
                             if county_lower in valid_counties:
                                 mask = self.standardize_county_names(gdf_copy["County"]) == county_lower
-                                gdf_copy.loc[mask, "Color"] = self.color_var.get()
+                                # Get all records for this county and species
+                                county_records = species_data[species_data["county"] == county]
+                                
+                                # Determine color based on year logic
+                                # If any record has a year that falls in the post-year category, use post-year color
+                                # Otherwise, use pre-year color or single color
+                                split_year_str = self.split_year_var.get().strip()
+                                if split_year_str:
+                                    try:
+                                        split_year = int(split_year_str)
+                                        has_post_year_record = False
+                                        has_pre_year_record = False
+                                        
+                                        for _, record in county_records.iterrows():
+                                            record_year = record.get('year')
+                                            if record_year is not None and not pd.isna(record_year):
+                                                try:
+                                                    record_year_int = int(record_year)
+                                                    if record_year_int > split_year:
+                                                        has_post_year_record = True
+                                                    else:
+                                                        has_pre_year_record = True
+                                                except (ValueError, TypeError):
+                                                    pass
+                                        
+                                        # Determine final color for this county
+                                        if has_post_year_record:
+                                            color = self.post_year_color_var.get()
+                                        elif has_pre_year_record:
+                                            color = self.pre_year_color_var.get()
+                                        else:
+                                            color = self.single_color_var.get()
+                                    except ValueError:
+                                        color = self.single_color_var.get()
+                                else:
+                                    color = self.single_color_var.get()
+                                
+                                gdf_copy.loc[mask, "Color"] = color
                         gdf_copy.boundary.plot(ax=ax, linewidth=0.7, edgecolor="black")
                         gdf_copy.plot(ax=ax, color=gdf_copy["Color"], alpha=0.6)
                         ax.axis("off")
@@ -1130,31 +1343,63 @@ class AnalysisScreen:
                        foreground='dark green')
         
         # Color Selection Section
-        color_frame = ttk.LabelFrame(left_panel, text="Color Settings", padding="10")
+        color_frame = ttk.LabelFrame(left_panel, text="Year-Based Color Settings", padding="10")
         color_frame.pack(fill='x', pady=(0, 20))
         
         # Common color options
-        color_options = ["red", "blue", "grey", "black", "yellow", "purple", "orange", "pink", "brown"]
+        color_options = ["red", "blue", "green", "grey", "black", "yellow", "purple", "orange", "pink", "brown", "cyan", "magenta"]
         
-        # Color input
-        ttk.Label(color_frame, text="Enter Color:", style='TLabel').pack(fill='x')
-        color_combo = ttk.Combobox(
+        # Pre-Year Color
+        ttk.Label(color_frame, text="Pre-Year Color:", style='TLabel').pack(fill='x')
+        pre_year_color_combo = ttk.Combobox(
             color_frame, 
-            textvariable=self.color_var, 
+            textvariable=self.pre_year_color_var, 
             values=color_options,
             state="normal"
         )
-        color_combo.pack(fill='x', pady=(0, 10))
-        color_combo.bind('<<ComboboxSelected>>', self.on_color_change)
-        color_combo.bind('<Return>', self.on_color_change)
-        color_combo.bind('<FocusOut>', self.on_color_change)
+        pre_year_color_combo.pack(fill='x', pady=(0, 5))
+        pre_year_color_combo.bind('<<ComboboxSelected>>', self.on_color_change)
+        pre_year_color_combo.bind('<Return>', self.on_color_change)
+        pre_year_color_combo.bind('<FocusOut>', self.on_color_change)
         
-        # Add helper text for custom colors 
+        # Post-Year Color
+        ttk.Label(color_frame, text="Post-Year Color:", style='TLabel').pack(fill='x')
+        post_year_color_combo = ttk.Combobox(
+            color_frame, 
+            textvariable=self.post_year_color_var, 
+            values=color_options,
+            state="normal"
+        )
+        post_year_color_combo.pack(fill='x', pady=(0, 5))
+        post_year_color_combo.bind('<<ComboboxSelected>>', self.on_color_change)
+        post_year_color_combo.bind('<Return>', self.on_color_change)
+        post_year_color_combo.bind('<FocusOut>', self.on_color_change)
+        
+        # Single Color
+        ttk.Label(color_frame, text="Single Color (when year not specified):", style='TLabel').pack(fill='x')
+        single_color_combo = ttk.Combobox(
+            color_frame, 
+            textvariable=self.single_color_var, 
+            values=color_options,
+            state="normal"
+        )
+        single_color_combo.pack(fill='x', pady=(0, 10))
+        single_color_combo.bind('<<ComboboxSelected>>', self.on_color_change)
+        single_color_combo.bind('<Return>', self.on_color_change)
+        single_color_combo.bind('<FocusOut>', self.on_color_change)
+        
+        # Split Year Input
+        ttk.Label(color_frame, text="Split by Year (optional):", style='TLabel').pack(fill='x')
+        year_entry = ttk.Entry(color_frame, textvariable=self.split_year_var, width=10)
+        year_entry.pack(fill='x', pady=(0, 5))
+        year_entry.bind('<KeyRelease>', self.on_color_change)
+        
+        # Add helper text for year-based coloring
         helper_label = ttk.Label(
             color_frame, 
-            text="Tip: You can type any valid color name or hex code (e.g., #FF5733)",
+            text="Tip: Leave year empty to use single color for all records. Enter a year (e.g., 2014) to split records by collection date.",
             style='TLabel',
-            wraplength=250
+            wraplength=220
         )
         helper_label.pack(fill='x', pady=(5, 0))
         
@@ -1179,9 +1424,9 @@ class AnalysisScreen:
         export_frame.pack(fill='x', pady=(0, 10))
         self.export_format_var = StringVar(self.root)
         self.export_format_var.set('tiff')  # Default to tiff
-        radio_tiff = ttk.Radiobutton(export_frame, text="Michael’s TIFF (For Rulers Only).tiff", variable=self.export_format_var, value='tiff')
+        radio_tiff = ttk.Radiobutton(export_frame, text="Michael's TIFF (For Rulers Only).tiff", variable=self.export_format_var, value='tiff')
         radio_tiff.pack(fill='x', pady=(0, 0))
-        radio_svg = ttk.Radiobutton(export_frame, text="Casey’s SVG (For the Rest of Us).svg", variable=self.export_format_var, value='svg')
+        radio_svg = ttk.Radiobutton(export_frame, text="Casey's SVG (For the Rest of Us).svg", variable=self.export_format_var, value='svg')
         radio_svg.pack(fill='x', pady=(0, 0))
         self.show_subgenus_var = tk.BooleanVar(value=True)
         subgenus_checkbox = ttk.Checkbutton(export_frame, text='Show Subgenus in Captions', variable=self.show_subgenus_var, command=self.regenerate_maps_with_new_subgenus_setting)
