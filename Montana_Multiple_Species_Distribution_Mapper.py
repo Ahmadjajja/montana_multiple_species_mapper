@@ -62,7 +62,7 @@ class SplashScreen:
         # Add title
         title = ttk.Label(
             frame, 
-            text="Montana Species Distribution Mapper",
+            text="Montana Multiple Species Distribution Mapper",
             font=('Helvetica', 16, 'bold'),
             foreground='dark green'
         )
@@ -169,7 +169,7 @@ class MainApplication:
                 
                 # Also try to set the window class name for better icon handling
                 try:
-                    ctypes.windll.kernel32.SetConsoleTitleW("Montana Species Distribution Mapper")
+                    ctypes.windll.kernel32.SetConsoleTitleW("Montana Multiple Species Distribution Mapper")
                 except:
                     pass
             except Exception as e:
@@ -346,7 +346,7 @@ class MainApplication:
 class AnalysisScreen:
     def __init__(self, parent, main_app):
         self.root = tk.Toplevel(parent)
-        self.root.title("Montana Species Distribution Mapper")
+        self.root.title("Montana Multiple Species Distribution Mapper")
         
         # Allow the window to be moved to any screen
         self.root.attributes('-alpha', 1.0)
@@ -812,12 +812,12 @@ class AnalysisScreen:
                                             pass
                                 
                                 # Determine final color for this county
-                                if has_post_year_record:
-                                    color = self.post_year_color_var.get()
-                                elif has_pre_year_record:
-                                    color = self.pre_year_color_var.get()
+                                if has_pre_year_record:
+                                    color = self.pre_year_color_var.get()  # PRE-YEAR COLOR (HIGHEST PRIORITY)
+                                elif has_post_year_record:
+                                    color = self.post_year_color_var.get()  # POST-YEAR COLOR (LOWER PRIORITY)
                                 else:
-                                    color = self.single_color_var.get()
+                                    color = self.single_color_var.get()  # SINGLE COLOR
                             except ValueError:
                                 color = self.single_color_var.get()
                         else:
@@ -992,12 +992,12 @@ class AnalysisScreen:
                                                 pass
                                     
                                     # Determine final color for this county
-                                    if has_post_year_record:
-                                        color = self.post_year_color_var.get()
-                                    elif has_pre_year_record:
-                                        color = self.pre_year_color_var.get()
+                                    if has_pre_year_record:
+                                        color = self.pre_year_color_var.get()  # PRE-YEAR COLOR (HIGHEST PRIORITY)
+                                    elif has_post_year_record:
+                                        color = self.post_year_color_var.get()  # POST-YEAR COLOR (LOWER PRIORITY)
                                     else:
-                                        color = self.single_color_var.get()
+                                        color = self.single_color_var.get()  # SINGLE COLOR
                                 except ValueError:
                                     color = self.single_color_var.get()
                             else:
@@ -1137,12 +1137,12 @@ class AnalysisScreen:
                                                     pass
                                         
                                         # Determine final color for this county
-                                        if has_post_year_record:
-                                            color = self.post_year_color_var.get()
-                                        elif has_pre_year_record:
-                                            color = self.pre_year_color_var.get()
+                                        if has_pre_year_record:
+                                            color = self.pre_year_color_var.get()  # PRE-YEAR COLOR (HIGHEST PRIORITY)
+                                        elif has_post_year_record:
+                                            color = self.post_year_color_var.get()  # POST-YEAR COLOR (LOWER PRIORITY)
                                         else:
-                                            color = self.single_color_var.get()
+                                            color = self.single_color_var.get()  # SINGLE COLOR
                                     except ValueError:
                                         color = self.single_color_var.get()
                                 else:
@@ -1273,7 +1273,7 @@ class AnalysisScreen:
         title_frame.pack(fill='x', pady=(0, 20))
         title_label = ttk.Label(
             title_frame, 
-            text="Montana Species Distribution Mapper", 
+            text="Montana Multiple Species Distribution Mapper", 
             style='Title.TLabel',
             foreground='dark green'
         )

@@ -2,7 +2,7 @@
 
 ## Excel File Format
 
-The Montana Species Distribution Mapper requires a specific Excel file format to function correctly. This document outlines the required structure and provides examples.
+The Montana Multiple Species Distribution Mapper requires a specific Excel file format to function correctly. This document outlines the required structure and provides examples.
 
 ### Required Columns
 

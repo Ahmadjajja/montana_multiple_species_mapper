@@ -1,4 +1,4 @@
-# Montana Species Distribution Mapper
+# Montana Multiple Species Distribution Mapper
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![Python 3.8+](https://img.shields.io/badge/python-3.8+-blue.svg)](https://www.python.org/downloads/)
@@ -15,7 +15,7 @@ A powerful visualization tool for analyzing and mapping species distribution acr
 
 ## Overview
 
-The Montana Species Distribution Mapper is a desktop application designed to help researchers, biologists, and conservationists visualize and analyze species distribution patterns across Montana counties. The application supports taxonomic filtering and generates publication-ready distribution maps with customizable color schemes.
+The Montana Multiple Species Distribution Mapper is a desktop application designed to help researchers, biologists, and conservationists visualize and analyze species distribution patterns across Montana counties. The application supports taxonomic filtering and generates publication-ready distribution maps with customizable color schemes.
 
 ## Features
 
@@ -52,8 +52,8 @@ The Montana Species Distribution Mapper is a desktop application designed to hel
 ## 📁 Project Structure
 
 ```
-Montana_Species_Distribution_Mapper/
-├── Montana_Species_Distribution_Mapper.py  # Main application
+Montana_Multiple_Species_Distribution_Mapper/
+├── Montana_Multiple_Species_Distribution_Mapper.py  # Main application
 ├── MT_Base_Map_Generator.py      # Base map utility
 ├── requirements.txt              # Python dependencies
 ├── app_icon.ico                 # Application icon
@@ -74,15 +74,15 @@ Montana_Species_Distribution_Mapper/
 - Python 3.8 or later (if installing from source)
 
 ### Method 1: Using the Executable (Recommended)
-1. Download the latest `Montana_Species_Distribution_Mapper.exe` from the releases page
+1. Download the latest `Montana_Multiple_Species_Distribution_Mapper.exe` from the releases page
 2. Double-click the executable to run the application
 3. No additional installation steps required
 
 ### Method 2: Installing from Source
 1. Clone the repository:
    ```bash
-   git clone https://github.com/your-repo/Montana_Species_Distribution_Mapper.git
-   cd Montana_Species_Distribution_Mapper
+   git clone https://github.com/your-repo/Montana_Multiple_Species_Distribution_Mapper.git
+cd Montana_Multiple_Species_Distribution_Mapper
    ```
 
 2. Create and activate a virtual environment:
@@ -98,7 +98,7 @@ Montana_Species_Distribution_Mapper/
 
 4. Run the application:
    ```bash
-   python Montana_Species_Distribution_Mapper.py
+   python Montana_Multiple_Species_Distribution_Mapper.py
    ```
 
 ## Data Requirements

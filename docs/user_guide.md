@@ -1,4 +1,4 @@
-# Montana Species Distribution Mapper - User Guide
+# Montana Multiple Species Distribution Mapper - User Guide
 
 ## Table of Contents
 1. [Getting Started](#getting-started)

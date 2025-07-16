@@ -8,7 +8,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [1.0.0] - 2024-03-XX
 
 ### Added
-- Initial release of Montana Bee County Map Generator
+- Initial release of Montana Multiple Species Distribution Mapper
 - Single Year Analysis feature
   - Pre/post year visualization
   - Customizable colors

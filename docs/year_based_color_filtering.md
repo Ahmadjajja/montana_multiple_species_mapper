@@ -2,7 +2,7 @@
 
 ## Overview
 
-The Montana Species Distribution Mapper now includes a powerful year-based color filtering system that allows users to visualize temporal patterns in species distribution data. This feature enables researchers to distinguish between historical and recent records by applying different colors based on collection dates.
+The Montana Multiple Species Distribution Mapper now includes a powerful year-based color filtering system that allows users to visualize temporal patterns in species distribution data. This feature enables researchers to distinguish between historical and recent records by applying different colors based on collection dates.
 
 ## Feature Components
 
@@ -27,12 +27,15 @@ The system provides three color settings:
    - Records without year data → Single Color
 
 ### County-Level Coloring
-For each county, the system analyzes all records for that species:
-- If **any** record in the county has a year > split year → Post-Year Color
-- If **only** records ≤ split year exist → Pre-Year Color  
+For each county, the system analyzes all records for that species using a **two-pass priority system**:
+- **First Pass**: Check for records ≤ split year (Pre-Year Color)
+- **Second Pass**: Check for records > split year (Post-Year Color)
+- **Priority Rule**: Pre-year records (≤ split year) have **HIGHEST priority**
+- If **any** record in the county has a year ≤ split year → Pre-Year Color (overrides post-year)
+- If **only** records > split year exist → Post-Year Color
 - If **no** records have valid years → Single Color
 
-This ensures that counties with mixed temporal data are properly represented.
+This ensures that counties with mixed temporal data show the **pre-year color** (historical priority).
 
 ## User Interface
 
@@ -84,8 +87,8 @@ Your Excel file should include:
 
 ### Example 3: Mixed Temporal Data
 If a county has records from both 2010 and 2018 with split year 2014:
-- The county will be colored with Post-Year Color (red)
-- This indicates the county has recent records
+- The county will be colored with **Pre-Year Color (green)** - because 2010 ≤ 2014
+- This indicates the county has **historical records** (pre-year priority overrides post-year)
 
 ## Export Features
 
